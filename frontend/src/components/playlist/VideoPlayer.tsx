@@ -1,0 +1,53 @@
+"use client";
+
+import { motion } from "motion/react";
+import type { Song } from "@/types/song";
+import { getYouTubeEmbedUrl } from "@/lib/youtube";
+
+interface VideoPlayerProps {
+  song: Song;
+}
+
+export function VideoPlayer({ song }: VideoPlayerProps) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-2xl shadow-xl overflow-hidden border-2 border-primary/20"
+    >
+      <div className="relative aspect-video bg-black">
+        <iframe
+          key={song.id}
+          src={getYouTubeEmbedUrl(song.youtubeVideoId)}
+          className="absolute inset-0 w-full h-full"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        />
+      </div>
+      <div className="p-6 space-y-3">
+        <div className="flex items-baseline gap-2">
+          <p className="font-bold text-foreground">{song.submitterName}</p>
+          {song.songTitle && (
+            <p className="text-sm text-muted-foreground">
+              — {song.songTitle}
+              {song.artistName && ` by ${song.artistName}`}
+            </p>
+          )}
+        </div>
+        {song.description && (
+          <p className="text-lg text-foreground leading-relaxed font-medium">
+            &ldquo;{song.description}&rdquo;
+          </p>
+        )}
+        <div className="text-sm text-muted-foreground font-semibold">
+          Added{" "}
+          {new Date(song.submittedDate).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            year: "numeric",
+          })}
+        </div>
+      </div>
+    </motion.div>
+  );
+}
