@@ -6,17 +6,33 @@ const NOCODB_BASE_URL = process.env.NOCODB_BASE_URL;
 const NOCODB_API_TOKEN = process.env.NOCODB_API_TOKEN;
 const NOCODB_TABLE_ID = process.env.NOCODB_TABLE_ID;
 
-// In-memory lock to prevent concurrent syncs from creating duplicates
-let syncInProgress = false;
+// Rate-limited fetch wrapper with retry on 429
+const MIN_REQUEST_INTERVAL_MS = 250; // max ~4 requests/sec
+let lastRequestTime = 0;
 
-export function acquireSyncLock(): boolean {
-  if (syncInProgress) return false;
-  syncInProgress = true;
-  return true;
-}
+async function rateLimitedFetch(
+  input: string | URL,
+  init?: RequestInit
+): Promise<Response> {
+  const now = Date.now();
+  const elapsed = now - lastRequestTime;
+  if (elapsed < MIN_REQUEST_INTERVAL_MS) {
+    await new Promise((r) => setTimeout(r, MIN_REQUEST_INTERVAL_MS - elapsed));
+  }
+  lastRequestTime = Date.now();
 
-export function releaseSyncLock(): void {
-  syncInProgress = false;
+  const response = await fetch(input, init);
+
+  if (response.status === 429) {
+    const retryAfter = response.headers.get("retry-after");
+    const waitMs = retryAfter ? parseInt(retryAfter, 10) * 1000 : 2000;
+    console.warn(`NocoDB 429 — retrying after ${waitMs}ms`);
+    await new Promise((r) => setTimeout(r, waitMs));
+    lastRequestTime = Date.now();
+    return fetch(input, init);
+  }
+
+  return response;
 }
 
 function getApiUrl(path: string = ""): string {
@@ -56,7 +72,7 @@ export async function fetchAllNocoDBSongs(): Promise<Song[]> {
 
   const allSongs: Song[] = [];
   let offset = 0;
-  const limit = 200;
+  const limit = 100; // NocoDB caps at 100 per page
 
   do {
     const url = new URL(getApiUrl());
@@ -64,7 +80,7 @@ export async function fetchAllNocoDBSongs(): Promise<Song[]> {
     url.searchParams.set("offset", offset.toString());
     url.searchParams.set("sort", "-submitted_date");
 
-    const response = await fetch(url.toString(), {
+    const response = await rateLimitedFetch(url.toString(), {
       headers: getHeaders(),
       cache: "no-store",
     });
@@ -76,20 +92,22 @@ export async function fetchAllNocoDBSongs(): Promise<Song[]> {
 
     const data = await response.json();
     const rows: NocoDBRow[] = data.list || [];
+    const pageInfo = data.pageInfo as { isLastPage?: boolean } | undefined;
 
     for (const row of rows) {
       allSongs.push(rowToSong(row));
     }
 
-    if (rows.length < limit) break;
-    offset += limit;
+    if (rows.length === 0 || pageInfo?.isLastPage) break;
+    offset += rows.length;
   } while (true);
 
+  console.log(`[SYNC] fetchAllNocoDBSongs: fetched ${allSongs.length} total rows`);
   return allSongs;
 }
 
 export async function createNocoDBSong(song: Omit<NocoDBRow, "Id" | "CreatedAt" | "UpdatedAt">): Promise<Song> {
-  const response = await fetch(getApiUrl(), {
+  const response = await rateLimitedFetch(getApiUrl(), {
     method: "POST",
     headers: getHeaders(),
     body: JSON.stringify(song),
@@ -104,28 +122,34 @@ export async function createNocoDBSong(song: Omit<NocoDBRow, "Id" | "CreatedAt" 
   return rowToSong(row);
 }
 
-export async function findByAirtableRecordId(recordId: string): Promise<NocoDBRow | null> {
-  const url = new URL(getApiUrl());
-  url.searchParams.set("where", `(airtable_record_id,eq,${recordId})`);
-  url.searchParams.set("limit", "1");
+/**
+ * Bulk insert records into NocoDB. Sends up to 100 records per request
+ * (NocoDB's recommended batch size).
+ */
+export async function bulkCreateNocoDBSongs(
+  songs: Omit<NocoDBRow, "Id" | "CreatedAt" | "UpdatedAt">[]
+): Promise<void> {
+  if (songs.length === 0) return;
 
-  const response = await fetch(url.toString(), {
-    headers: getHeaders(),
-    cache: "no-store",
-  });
+  const BATCH_SIZE = 100;
+  const errors: string[] = [];
 
-  if (!response.ok) return null;
+  for (let i = 0; i < songs.length; i += BATCH_SIZE) {
+    const batch = songs.slice(i, i + BATCH_SIZE);
 
-  const data = await response.json();
-  const rows: NocoDBRow[] = data.list || [];
-  return rows[0] || null;
-}
+    const response = await rateLimitedFetch(getApiUrl(), {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify(batch),
+    });
 
-export async function upsertAirtableSong(song: Omit<NocoDBRow, "Id" | "CreatedAt" | "UpdatedAt">): Promise<void> {
-  if (!song.airtable_record_id) return;
+    if (!response.ok) {
+      const text = await response.text();
+      errors.push(`Batch ${i / BATCH_SIZE + 1}: ${response.status} ${text}`);
+    }
+  }
 
-  const existing = await findByAirtableRecordId(song.airtable_record_id);
-  if (existing) return; // Already synced
-
-  await createNocoDBSong(song);
+  if (errors.length > 0) {
+    throw new Error(`NocoDB bulk create failed: ${errors.join("; ")}`);
+  }
 }

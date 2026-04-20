@@ -2,8 +2,6 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { motion } from "motion/react";
-import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import type { Song } from "@/types/song";
 import { getCurrentMonth, getCurrentYear } from "@/lib/constants";
 import { Header } from "@/components/layout/Header";

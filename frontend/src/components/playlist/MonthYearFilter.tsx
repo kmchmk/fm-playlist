@@ -32,7 +32,7 @@ export function MonthYearFilter({
       <Calendar className="w-5 h-5 text-secondary" strokeWidth={2.5} />
       <Select
         value={selectedYear.toString()}
-        onValueChange={(v) => onYearChange(parseInt(v))}
+        onValueChange={(v) => onYearChange(parseInt(v, 10))}
       >
         <SelectTrigger className="w-28 bg-transparent border-0 shadow-none font-semibold">
           <SelectValue />
@@ -47,7 +47,7 @@ export function MonthYearFilter({
       </Select>
       <Select
         value={selectedMonth.toString()}
-        onValueChange={(v) => onMonthChange(parseInt(v))}
+        onValueChange={(v) => onMonthChange(parseInt(v, 10))}
       >
         <SelectTrigger className="w-36 bg-transparent border-0 shadow-none font-semibold">
           <SelectValue />

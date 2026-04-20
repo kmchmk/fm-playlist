@@ -57,7 +57,10 @@ export function AddTrackDialog({ onTrackAdded }: AddTrackDialogProps) {
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      setIsOpen(open);
+      if (!open) setError(null);
+    }}>
       <DialogTrigger asChild>
         <Button className="bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/30 px-8 py-6 font-bold">
           <Plus className="w-5 h-5 mr-2" strokeWidth={3} />
@@ -75,10 +78,11 @@ export function AddTrackDialog({ onTrackAdded }: AddTrackDialogProps) {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-5 mt-4">
           <div>
-            <label className="block mb-2 font-bold text-foreground">
+            <label htmlFor="youtube-url" className="block mb-2 font-bold text-foreground">
               YouTube URL
             </label>
             <Input
+              id="youtube-url"
               value={formData.youtubeUrl}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, youtubeUrl: e.target.value }))
@@ -89,10 +93,11 @@ export function AddTrackDialog({ onTrackAdded }: AddTrackDialogProps) {
             />
           </div>
           <div>
-            <label className="block mb-2 font-bold text-foreground">
+            <label htmlFor="description" className="block mb-2 font-bold text-foreground">
               Description (optional)
             </label>
             <Textarea
+              id="description"
               value={formData.description}
               onChange={(e) =>
                 setFormData((prev) => ({

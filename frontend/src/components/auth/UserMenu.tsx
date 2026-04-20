@@ -29,7 +29,7 @@ export function UserMenu({ user }: UserMenuProps) {
       <a
         href="/auth/logout"
         className="text-muted-foreground hover:text-destructive transition-colors"
-        title="Sign out"
+        aria-label="Sign out"
       >
         <LogOut className="w-4 h-4" strokeWidth={2.5} />
       </a>

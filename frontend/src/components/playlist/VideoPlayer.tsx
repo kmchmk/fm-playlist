@@ -19,6 +19,7 @@ export function VideoPlayer({ song }: VideoPlayerProps) {
         <iframe
           key={song.id}
           src={getYouTubeEmbedUrl(song.youtubeVideoId)}
+          title={song.songTitle || "YouTube video"}
           className="absolute inset-0 w-full h-full"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowFullScreen

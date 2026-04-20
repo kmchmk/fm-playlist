@@ -15,6 +15,8 @@ export async function fetchAllAirtableRecords(): Promise<Song[]> {
 
   const allSongs: Song[] = [];
   let offset: string | undefined;
+  let rateLimitRetries = 0;
+  const MAX_RATE_LIMIT_RETRIES = 3;
 
   do {
     const url = new URL(AIRTABLE_API_URL);
@@ -35,6 +37,11 @@ export async function fetchAllAirtableRecords(): Promise<Song[]> {
 
     if (!response.ok) {
       if (response.status === 429) {
+        rateLimitRetries++;
+        if (rateLimitRetries > MAX_RATE_LIMIT_RETRIES) {
+          console.error("Airtable rate limit: max retries exceeded");
+          break;
+        }
         // Rate limited — wait and retry
         await new Promise((resolve) => setTimeout(resolve, 1000));
         continue;
@@ -42,6 +49,8 @@ export async function fetchAllAirtableRecords(): Promise<Song[]> {
       console.error(`Airtable API error: ${response.status} ${response.statusText}`);
       break;
     }
+
+    rateLimitRetries = 0; // Reset on success
 
     const data: AirtableResponse = await response.json();
 

@@ -63,7 +63,7 @@ Push to the `main` branch. Coolify will automatically rebuild and deploy (if aut
 
 ## Health Check
 
-The app serves on port 3000. Coolify can health-check via `GET /` (returns 200 for authenticated users or the login page).
+The app serves on port 3000. Note that `GET /` requires authentication and will redirect unauthenticated requests. For health checks, verify the container is listening on port 3000 (e.g. TCP check) rather than expecting HTTP 200 from `/`.
 
 ## Troubleshooting
 

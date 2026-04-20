@@ -13,7 +13,7 @@ interface HeaderProps {
 
 export function Header({ user }: HeaderProps) {
   return (
-    <motion.div
+    <motion.header
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       className="mb-12"
@@ -30,6 +30,6 @@ export function Header({ user }: HeaderProps) {
           Share your favorite tracks, discover what&apos;s moving the FM crew
         </p>
       </div>
-    </motion.div>
+    </motion.header>
   );
 }

@@ -25,21 +25,39 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body: CreateSongInput = await request.json();
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON body" },
+        { status: 400 }
+      );
+    }
 
-    if (!body.youtubeUrl || !isValidYouTubeUrl(body.youtubeUrl)) {
+    const { youtubeUrl, description } = body as Record<string, unknown>;
+
+    if (
+      typeof youtubeUrl !== "string" ||
+      !isValidYouTubeUrl(youtubeUrl)
+    ) {
       return NextResponse.json(
         { error: "A valid YouTube URL is required" },
         { status: 400 }
       );
     }
 
+    const input: CreateSongInput = {
+      youtubeUrl,
+      description: typeof description === "string" ? description : undefined,
+    };
+
     const user = {
       name: session.user.name || session.user.email || "Anonymous",
       email: session.user.email || "",
     };
 
-    const song = await createSong(body, user);
+    const song = await createSong(input, user);
     return NextResponse.json(song, { status: 201 });
   } catch (error) {
     console.error("Failed to create song:", error);

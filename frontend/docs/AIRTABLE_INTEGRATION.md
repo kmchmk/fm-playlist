@@ -35,9 +35,10 @@ The `getAllSongs()` function in `src/lib/songs.ts`:
 
 After serving the response, the server triggers a background sync:
 
-1. For each Airtable record not yet in NocoDB, calls `upsertAirtableSong()`
+1. For each Airtable record not yet in NocoDB, calls `bulkCreateNocoDBSongs()` via `syncAirtableToNocoDB()`
 2. This creates a copy in NocoDB with `source: "airtable"` and the original record ID
 3. Sync is non-blocking — errors are logged but don't affect the user
+4. An in-memory lock (`acquireSyncLock`) prevents concurrent syncs from creating duplicates
 
 ### Migration Path
 

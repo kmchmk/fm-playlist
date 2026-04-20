@@ -1,7 +1,7 @@
 export const ALLOWED_EMAIL_DOMAIN =
   process.env.ALLOWED_EMAIL_DOMAIN || "favoritemedium.com";
 
-export const MONTHS = [
+const MONTHS = [
   "January",
   "February",
   "March",

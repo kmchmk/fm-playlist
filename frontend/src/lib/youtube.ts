@@ -1,6 +1,6 @@
 const YOUTUBE_PATTERNS = [
-  /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
-  /youtube\.com\/shorts\/([^&\n?#]+)/,
+  /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/,
+  /youtube\.com\/shorts\/([A-Za-z0-9_-]{11})/,
 ];
 
 export function extractYouTubeId(url: string): string | null {
@@ -16,9 +16,9 @@ export function isValidYouTubeUrl(url: string): boolean {
 }
 
 export function getYouTubeThumbnailUrl(videoId: string): string {
-  return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+  return `https://img.youtube.com/vi/${encodeURIComponent(videoId)}/hqdefault.jpg`;
 }
 
 export function getYouTubeEmbedUrl(videoId: string): string {
-  return `https://www.youtube.com/embed/${videoId}?autoplay=0`;
+  return `https://www.youtube.com/embed/${encodeURIComponent(videoId)}?autoplay=0`;
 }

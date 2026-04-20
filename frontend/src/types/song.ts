@@ -29,7 +29,6 @@ export interface AirtableRecord {
     songDescription?: string;
     youtubeLink: string;
     submittedDate: string;
-    Month?: number;
   };
 }
 

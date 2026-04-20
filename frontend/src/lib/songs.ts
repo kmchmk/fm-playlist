@@ -2,10 +2,18 @@ import "server-only";
 
 import type { Song, CreateSongInput } from "@/types/song";
 import { fetchAllAirtableRecords } from "./airtable";
-import { fetchAllNocoDBSongs, createNocoDBSong, upsertAirtableSong, acquireSyncLock, releaseSyncLock } from "./nocodb";
+import { fetchAllNocoDBSongs, createNocoDBSong, bulkCreateNocoDBSongs } from "./nocodb";
 import { extractYouTubeId } from "./youtube";
 
+/** Normalize a composite key for dedup comparison. Trims whitespace,
+ *  lowercases, and strips any time component from dates. */
+function songKey(name: string, date: string, url: string): string {
+  const normDate = String(date).split("T")[0]; // "2024-01-15T00:00:00Z" → "2024-01-15"
+  return `${String(name).trim().toLowerCase()}|${normDate}|${String(url).trim().toLowerCase()}`;
+}
+
 export async function getAllSongs(): Promise<Song[]> {
+  // 1. Fetch both sources in parallel
   const [airtableSongs, nocodbSongs] = await Promise.all([
     fetchAllAirtableRecords().catch((err) => {
       console.error("Airtable fetch failed:", err);
@@ -17,46 +25,24 @@ export async function getAllSongs(): Promise<Song[]> {
     }),
   ]);
 
-  // Build a set of Airtable record IDs already in NocoDB
-  const syncedAirtableIds = new Set(
-    nocodbSongs
-      .filter((s) => s.airtableRecordId)
-      .map((s) => s.airtableRecordId!)
+  // 2. Build a set of composite keys from the NocoDB rows we already fetched
+  const existingKeys = new Set<string>();
+  for (const s of nocodbSongs) {
+    existingKeys.add(songKey(s.submitterName, s.submittedDate, s.youtubeUrl));
+  }
+
+  console.log(`[SYNC] Airtable: ${airtableSongs.length} rows, NocoDB: ${nocodbSongs.length} rows, NocoDB keys: ${existingKeys.size}`);
+
+  // 3. Find Airtable records that don't exist in NocoDB
+  const newAirtableSongs = airtableSongs.filter((song) =>
+    !existingKeys.has(songKey(song.submitterName, song.submittedDate, song.youtubeUrl))
   );
 
-  // Merged list: all NocoDB songs + Airtable songs not yet in NocoDB
-  const merged: Song[] = [...nocodbSongs];
-  const unsyncedAirtableSongs: Song[] = [];
-
-  for (const song of airtableSongs) {
-    if (!song.airtableRecordId || !syncedAirtableIds.has(song.airtableRecordId)) {
-      merged.push(song);
-      unsyncedAirtableSongs.push(song);
-    }
-  }
-
-  // Background sync: upsert unsynced Airtable records into NocoDB (with lock to prevent concurrent duplication)
-  if (unsyncedAirtableSongs.length > 0 && acquireSyncLock()) {
-    syncAirtableToNocoDB(unsyncedAirtableSongs)
-      .catch((err) => console.error("Background Airtable→NocoDB sync failed:", err))
-      .finally(() => releaseSyncLock());
-  }
-
-  // Sort by submitted date descending
-  merged.sort((a, b) => {
-    const dateA = new Date(a.submittedDate).getTime();
-    const dateB = new Date(b.submittedDate).getTime();
-    return dateB - dateA;
-  });
-
-  return merged;
-}
-
-async function syncAirtableToNocoDB(songs: Song[]): Promise<void> {
-  for (const song of songs) {
+  // 4. Insert new records into NocoDB (await to ensure it completes before next reload)
+  if (newAirtableSongs.length > 0) {
     try {
-      await upsertAirtableSong({
-        source: "airtable",
+      const rows = newAirtableSongs.map((song) => ({
+        source: "airtable" as const,
         airtable_record_id: song.airtableRecordId,
         submitter_name: song.submitterName,
         submitter_email: null,
@@ -68,11 +54,24 @@ async function syncAirtableToNocoDB(songs: Song[]): Promise<void> {
         submitted_date: song.submittedDate,
         month: song.month,
         year: song.year,
-      });
+      }));
+      await bulkCreateNocoDBSongs(rows);
     } catch (err) {
-      console.error(`Failed to sync Airtable record ${song.airtableRecordId}:`, err);
+      console.error("Airtable→NocoDB sync failed:", err);
     }
   }
+
+  // 5. Merge: NocoDB songs + only the new Airtable songs (to avoid duplicates in response)
+  const merged: Song[] = [...nocodbSongs, ...newAirtableSongs];
+
+  // Sort by submitted date descending
+  merged.sort((a, b) => {
+    const dateA = new Date(a.submittedDate).getTime();
+    const dateB = new Date(b.submittedDate).getTime();
+    return dateB - dateA;
+  });
+
+  return merged;
 }
 
 export async function createSong(

@@ -11,7 +11,7 @@ interface FooterProps {
 
 export function Footer({ trackCount, selectedMonth, selectedYear }: FooterProps) {
   return (
-    <motion.div
+    <motion.footer
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ delay: 0.3 }}
@@ -21,6 +21,6 @@ export function Footer({ trackCount, selectedMonth, selectedYear }: FooterProps)
         {trackCount} {trackCount === 1 ? "track" : "tracks"} in{" "}
         {formatMonthYear(selectedMonth, selectedYear)}
       </p>
-    </motion.div>
+    </motion.footer>
   );
 }
