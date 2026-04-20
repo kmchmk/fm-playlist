@@ -2,7 +2,7 @@ import "server-only";
 
 import type { Song, CreateSongInput } from "@/types/song";
 import { fetchAllAirtableRecords } from "./airtable";
-import { fetchAllNocoDBSongs, createNocoDBSong, upsertAirtableSong } from "./nocodb";
+import { fetchAllNocoDBSongs, createNocoDBSong, upsertAirtableSong, acquireSyncLock, releaseSyncLock } from "./nocodb";
 import { extractYouTubeId } from "./youtube";
 
 export async function getAllSongs(): Promise<Song[]> {
@@ -35,11 +35,11 @@ export async function getAllSongs(): Promise<Song[]> {
     }
   }
 
-  // Background sync: upsert unsynced Airtable records into NocoDB
-  if (unsyncedAirtableSongs.length > 0) {
-    syncAirtableToNocoDB(unsyncedAirtableSongs).catch((err) =>
-      console.error("Background Airtable→NocoDB sync failed:", err)
-    );
+  // Background sync: upsert unsynced Airtable records into NocoDB (with lock to prevent concurrent duplication)
+  if (unsyncedAirtableSongs.length > 0 && acquireSyncLock()) {
+    syncAirtableToNocoDB(unsyncedAirtableSongs)
+      .catch((err) => console.error("Background Airtable→NocoDB sync failed:", err))
+      .finally(() => releaseSyncLock());
   }
 
   // Sort by submitted date descending

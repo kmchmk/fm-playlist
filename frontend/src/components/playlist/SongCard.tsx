@@ -31,6 +31,7 @@ export function SongCard({ song, isActive, index, onClick }: SongCardProps) {
       <img
         src={getYouTubeThumbnailUrl(song.youtubeVideoId)}
         alt={`${song.submitterName}'s track`}
+        referrerPolicy="no-referrer"
         className="w-full h-full object-cover"
       />
       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity" />

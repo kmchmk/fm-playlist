@@ -6,6 +6,19 @@ const NOCODB_BASE_URL = process.env.NOCODB_BASE_URL;
 const NOCODB_API_TOKEN = process.env.NOCODB_API_TOKEN;
 const NOCODB_TABLE_ID = process.env.NOCODB_TABLE_ID;
 
+// In-memory lock to prevent concurrent syncs from creating duplicates
+let syncInProgress = false;
+
+export function acquireSyncLock(): boolean {
+  if (syncInProgress) return false;
+  syncInProgress = true;
+  return true;
+}
+
+export function releaseSyncLock(): void {
+  syncInProgress = false;
+}
+
 function getApiUrl(path: string = ""): string {
   return `${NOCODB_BASE_URL}/api/v2/tables/${NOCODB_TABLE_ID}/records${path}`;
 }
@@ -30,8 +43,8 @@ function rowToSong(row: NocoDBRow): Song {
     youtubeUrl: row.youtube_url,
     youtubeVideoId: row.youtube_video_id,
     submittedDate: row.submitted_date,
-    month: row.month,
-    year: row.year,
+    month: Number(row.month),
+    year: Number(row.year),
   };
 }
 
