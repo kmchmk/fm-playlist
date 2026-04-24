@@ -2,47 +2,57 @@ import "server-only";
 
 import type { Song, CreateSongInput } from "@/types/song";
 import { fetchAllAirtableRecords } from "./airtable";
-import { fetchAllNocoDBSongs, createNocoDBSong, bulkCreateNocoDBSongs } from "./nocodb";
+import {
+  fetchAllSongs,
+  createSongRow,
+  bulkCreateSongRows,
+  type SongInsert,
+} from "./songs-db";
 import { extractYouTubeId } from "./youtube";
 
 /** Normalize a composite key for dedup comparison. Trims whitespace,
  *  lowercases, and strips any time component from dates. */
 function songKey(name: string, date: string, url: string): string {
-  const normDate = String(date).split("T")[0]; // "2024-01-15T00:00:00Z" → "2024-01-15"
+  const normDate = String(date).split("T")[0];
   return `${String(name).trim().toLowerCase()}|${normDate}|${String(url).trim().toLowerCase()}`;
 }
 
 export async function getAllSongs(): Promise<Song[]> {
   // 1. Fetch both sources in parallel
-  const [airtableSongs, nocodbSongs] = await Promise.all([
+  const [airtableSongs, dbSongs] = await Promise.all([
     fetchAllAirtableRecords().catch((err) => {
       console.error("Airtable fetch failed:", err);
       return [] as Song[];
     }),
-    fetchAllNocoDBSongs().catch((err) => {
-      console.error("NocoDB fetch failed:", err);
+    fetchAllSongs().catch((err) => {
+      console.error("DB fetch failed:", err);
       return [] as Song[];
     }),
   ]);
 
-  // 2. Build a set of composite keys from the NocoDB rows we already fetched
+  // 2. Build a set of composite keys from the DB rows we already fetched
   const existingKeys = new Set<string>();
-  for (const s of nocodbSongs) {
+  for (const s of dbSongs) {
     existingKeys.add(songKey(s.submitterName, s.submittedDate, s.youtubeUrl));
   }
 
-  console.log(`[SYNC] Airtable: ${airtableSongs.length} rows, NocoDB: ${nocodbSongs.length} rows, NocoDB keys: ${existingKeys.size}`);
-
-  // 3. Find Airtable records that don't exist in NocoDB
-  const newAirtableSongs = airtableSongs.filter((song) =>
-    !existingKeys.has(songKey(song.submitterName, song.submittedDate, song.youtubeUrl))
+  console.log(
+    `[SYNC] Airtable: ${airtableSongs.length} rows, DB: ${dbSongs.length} rows, DB keys: ${existingKeys.size}`
   );
 
-  // 4. Insert new records into NocoDB (await to ensure it completes before next reload)
+  // 3. Find Airtable records that don't exist in the DB
+  const newAirtableSongs = airtableSongs.filter(
+    (song) =>
+      !existingKeys.has(
+        songKey(song.submitterName, song.submittedDate, song.youtubeUrl)
+      )
+  );
+
+  // 4. Insert new records into the DB (await so next reload sees them)
   if (newAirtableSongs.length > 0) {
     try {
-      const rows = newAirtableSongs.map((song) => ({
-        source: "airtable" as const,
+      const rows: SongInsert[] = newAirtableSongs.map((song) => ({
+        source: "airtable",
         airtable_record_id: song.airtableRecordId,
         submitter_name: song.submitterName,
         submitter_email: null,
@@ -55,16 +65,15 @@ export async function getAllSongs(): Promise<Song[]> {
         month: song.month,
         year: song.year,
       }));
-      await bulkCreateNocoDBSongs(rows);
+      await bulkCreateSongRows(rows);
     } catch (err) {
-      console.error("Airtable→NocoDB sync failed:", err);
+      console.error("Airtable→DB sync failed:", err);
     }
   }
 
-  // 5. Merge: NocoDB songs + only the new Airtable songs (to avoid duplicates in response)
-  const merged: Song[] = [...nocodbSongs, ...newAirtableSongs];
+  // 5. Merge: DB songs + only the new Airtable songs (to avoid duplicates)
+  const merged: Song[] = [...dbSongs, ...newAirtableSongs];
 
-  // Sort by submitted date descending
   merged.sort((a, b) => {
     const dateA = new Date(a.submittedDate).getTime();
     const dateB = new Date(b.submittedDate).getTime();
@@ -86,7 +95,7 @@ export async function createSong(
   const now = new Date();
   const submittedDate = now.toISOString().split("T")[0];
 
-  return createNocoDBSong({
+  return createSongRow({
     source: "app",
     airtable_record_id: null,
     submitter_name: user.name,
