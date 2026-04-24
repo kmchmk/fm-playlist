@@ -15,7 +15,6 @@ Next.js 15 + Auth0 + Postgres, deployable as a single `docker compose up`.
 ## Quick start (Docker)
 
 ```bash
-cd frontend
 cp .env.example .env
 # Edit .env — set AUTH0_* and POSTGRES_PASSWORD at minimum.
 docker compose up -d --build
@@ -31,7 +30,6 @@ The schema is auto-provisioned on first startup (see
 Requires a running Postgres. Set `DATABASE_URL` in `.env.local`.
 
 ```bash
-cd frontend
 npm install
 cp .env.example .env.local
 # Edit .env.local (including DATABASE_URL)

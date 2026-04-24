@@ -7,7 +7,6 @@ there is no manual table creation, API token setup, or data modeling step.
 ## Local / Self-hosted (one-shot)
 
 ```bash
-cd frontend
 cp .env.example .env
 # Edit .env — set AUTH0_* variables and POSTGRES_PASSWORD at minimum.
 docker compose up -d --build
@@ -24,7 +23,7 @@ docker compose down -v
 
 ## Required environment variables
 
-See [../.env.example](../.env.example) for the full list.
+See [.env.example](../.env.example) for the full list.
 
 - **Auth0 (required):** `AUTH0_SECRET`, `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`,
   `AUTH0_CLIENT_SECRET`, `APP_BASE_URL`. See [AUTH0_SETUP.md](AUTH0_SETUP.md).
@@ -42,16 +41,16 @@ You have two reasonable options:
 
 ### A. Deploy the compose file as-is
 
-1. Create a new **Docker Compose** resource in Coolify pointing at this repo,
-   with build context `frontend/`.
+1. Create a new **Docker Compose** resource in Coolify pointing at this repo
+   (build context `.`).
 2. Set environment variables via Coolify's UI (same names as `.env.example`).
 3. Assign a domain to the `app` service and enable SSL.
 
 ### B. App container + managed Postgres
 
 1. Create a Postgres resource in Coolify. Copy the connection string.
-2. Create a Docker Build resource for `frontend/Dockerfile` (context
-   `frontend/`). Set `DATABASE_URL` to the managed Postgres connection
+2. Create a Docker Build resource using the repo's root `Dockerfile` (build
+   context `.`). Set `DATABASE_URL` to the managed Postgres connection
    string. The app runs `ensureSchema()` on first request, which creates
    the `songs` table and indexes automatically.
 3. Assign a domain, enable SSL, deploy.
