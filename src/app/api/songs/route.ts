@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { auth0 } from "@/lib/auth";
+import { getCurrentAppAuth } from "@/lib/auth";
+import { ALLOWED_EMAIL_DOMAIN } from "@/lib/constants";
 import { getAllSongs, createSong } from "@/lib/songs";
 import type { CreateSongInput } from "@/types/song";
 import { isValidYouTubeUrl } from "@/lib/youtube";
@@ -20,9 +21,16 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth0.getSession();
-    if (!session) {
+    const appAuth = await getCurrentAppAuth();
+    if (appAuth.status === "unauthenticated") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (appAuth.status === "forbidden") {
+      return NextResponse.json(
+        { error: `Access restricted to @${ALLOWED_EMAIL_DOMAIN} email addresses` },
+        { status: 403 }
+      );
     }
 
     let body: unknown;
@@ -53,8 +61,8 @@ export async function POST(request: NextRequest) {
     };
 
     const user = {
-      name: session.user.name || session.user.email || "Anonymous",
-      email: session.user.email || "",
+      name: appAuth.user.name,
+      email: appAuth.user.email,
     };
 
     const song = await createSong(input, user);

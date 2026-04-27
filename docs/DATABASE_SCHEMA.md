@@ -13,7 +13,7 @@ app startup by `ensureSchema()` in [../src/lib/db.ts](../src/lib/db.ts).
 | `source`             | `TEXT`        | No  | `"airtable"` for synced records, `"app"` for new submissions |
 | `airtable_record_id` | `TEXT UNIQUE` | Yes | Original Airtable record ID. Unique for dedup during sync |
 | `submitter_name`     | `TEXT`        | No  | For Airtable: `fields.submitterName`. For app: Google display name |
-| `submitter_email`    | `TEXT`        | Yes | Only populated for app submissions (from Auth0 session) |
+| `submitter_email`    | `TEXT`        | Yes | Only populated for app submissions (from Clerk user) |
 | `artist_name`        | `TEXT`        | Yes | From Airtable `fields.artistName` |
 | `song_title`         | `TEXT`        | Yes | From Airtable `fields.songTitle` |
 | `description`        | `TEXT`        | Yes | From Airtable `fields.songDescription` or user input |
@@ -39,7 +39,7 @@ Indexes: `(submitted_date DESC)`, `(year, month)`, `(youtube_video_id)`.
 ### New App Submissions
 
 1. User submits a YouTube URL + optional description.
-2. Server extracts the video ID and sets submitter from the Auth0 session.
+2. Server extracts the video ID and sets submitter from the Clerk user.
 3. Record is inserted into Postgres with `source: "app"`.
 
 ## Airtable Schema (Read-Only, Legacy)

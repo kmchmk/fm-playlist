@@ -1,5 +1,6 @@
 "use client";
 
+import { SignOutButton } from "@clerk/nextjs";
 import { LogOut } from "lucide-react";
 import Image from "next/image";
 
@@ -26,13 +27,15 @@ export function UserMenu({ user }: UserMenuProps) {
       <span className="text-sm font-semibold text-foreground hidden sm:inline">
         {user.name || user.email}
       </span>
-      <a
-        href="/auth/logout"
-        className="text-muted-foreground hover:text-destructive transition-colors"
-        aria-label="Sign out"
-      >
-        <LogOut className="w-4 h-4" strokeWidth={2.5} />
-      </a>
+      <SignOutButton>
+        <button
+          type="button"
+          className="text-muted-foreground hover:text-destructive transition-colors"
+          aria-label="Sign out"
+        >
+          <LogOut className="w-4 h-4" strokeWidth={2.5} />
+        </button>
+      </SignOutButton>
     </div>
   );
 }

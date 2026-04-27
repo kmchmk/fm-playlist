@@ -1,12 +1,13 @@
-import { auth0 } from "@/lib/auth";
+import { getCurrentAppAuth } from "@/lib/auth";
+import { ALLOWED_EMAIL_DOMAIN } from "@/lib/constants";
 import { getAllSongs } from "@/lib/songs";
 import { PlaylistView } from "@/components/playlist/PlaylistView";
 import { LoginButton } from "@/components/auth/LoginButton";
 
 export default async function HomePage() {
-  const session = await auth0.getSession();
+  const appAuth = await getCurrentAppAuth();
 
-  if (!session) {
+  if (appAuth.status !== "authenticated") {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-8 max-w-lg px-4">
@@ -18,7 +19,9 @@ export default async function HomePage() {
           </p>
           <LoginButton />
           <p className="text-sm text-muted-foreground">
-            Sign in with your @favoritemedium.com Google account
+            {appAuth.status === "forbidden"
+              ? `Access is restricted to @${ALLOWED_EMAIL_DOMAIN} Google accounts. Sign out and choose an approved account.`
+              : `Sign in with your @${ALLOWED_EMAIL_DOMAIN} Google account`}
           </p>
         </div>
       </div>
@@ -30,11 +33,7 @@ export default async function HomePage() {
   return (
     <PlaylistView
       initialSongs={songs}
-      user={{
-        name: session.user.name,
-        picture: session.user.picture,
-        email: session.user.email,
-      }}
+      user={appAuth.user}
     />
   );
 }

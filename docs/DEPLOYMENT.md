@@ -8,7 +8,7 @@ there is no manual table creation, API token setup, or data modeling step.
 
 ```bash
 cp .env.example .env
-# Edit .env — set AUTH0_* variables and POSTGRES_PASSWORD at minimum.
+# Edit .env - set Clerk keys and POSTGRES_PASSWORD at minimum.
 docker compose up -d --build
 ```
 
@@ -25,15 +25,20 @@ docker compose down -v
 
 See [.env.example](../.env.example) for the full list.
 
-- **Auth0 (required):** `AUTH0_SECRET`, `AUTH0_DOMAIN`, `AUTH0_CLIENT_ID`,
-  `AUTH0_CLIENT_SECRET`, `APP_BASE_URL`. See [AUTH0_SETUP.md](AUTH0_SETUP.md).
+- **Clerk (required):** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`,
+  `CLERK_SECRET_KEY`. See [CLERK_SETUP.md](CLERK_SETUP.md).
+  Note: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is inlined into the client bundle
+  at **build time** and must be passed as a Docker build arg (already wired
+  in `docker-compose.yml`; for Coolify or other managed builds, set it as a
+  build-time variable in addition to a runtime variable).
 - **Postgres (required):** `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`
   — these are consumed by both services; `DATABASE_URL` is derived from them
   in `docker-compose.yml`.
 - **Airtable (optional):** `AIRTABLE_API_TOKEN`, `AIRTABLE_BASE_ID`. Omit to
   disable the Airtable → Postgres sync; the app still runs.
 - **Auth domain allowlist (optional):** `ALLOWED_EMAIL_DOMAIN`, defaults to
-  `favoritemedium.com`.
+  `favoritemedium.com`. Configure the same restriction in Clerk as the primary
+  access control.
 
 ## Coolify / managed hosts
 
@@ -55,13 +60,17 @@ You have two reasonable options:
    the `songs` table and indexes automatically.
 3. Assign a domain, enable SSL, deploy.
 
-## Auth0 callback URLs
+## Clerk production setup
 
-After deploying, update your Auth0 application:
+After deploying, update your Clerk application:
 
-- **Allowed Callback URLs:** `https://<your-domain>/auth/callback`
-- **Allowed Logout URLs:** `https://<your-domain>`
-- **Allowed Web Origins:** `https://<your-domain>`
+- Add `https://<your-domain>` as an allowed production domain.
+- Enable Google sign-in for the production instance.
+- Restrict sign-ups/sign-ins to `@favoritemedium.com` in Clerk's restrictions
+  or allowlist settings.
+- Set production values for `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and
+  `CLERK_SECRET_KEY` in your host.
+- Existing Auth0 sessions do not migrate; users will sign in again with Clerk.
 
 ## Health check
 
@@ -75,7 +84,9 @@ returns `{"ok": true}`. Compose uses it as the container health check.
 - **App starts before DB is ready** — compose uses `depends_on: service_healthy`,
   but if you're running the app outside compose, retry logic is in the pg pool
   itself; first requests may fail until Postgres accepts connections.
-- **Auth0 callback mismatch** — the `APP_BASE_URL` must exactly match the base
-  URL registered in Auth0 (scheme, host, port).
+- **Clerk keys missing or mixed** — use matching publishable and secret keys
+  from the same Clerk development or production instance.
+- **Unexpected account can sign in** — check Clerk's sign-up restrictions and
+  confirm `ALLOWED_EMAIL_DOMAIN` matches the intended domain.
 - **Airtable 401/403** — token expired or scoped incorrectly. Either fix the
   token or unset `AIRTABLE_API_TOKEN` to skip sync entirely.

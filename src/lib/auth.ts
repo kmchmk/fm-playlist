@@ -1,21 +1,51 @@
-import { Auth0Client } from "@auth0/nextjs-auth0/server";
+import { currentUser } from "@clerk/nextjs/server";
 import { ALLOWED_EMAIL_DOMAIN } from "@/lib/constants";
 
-export const auth0 = new Auth0Client({
-  authorizationParameters: {
-    scope: "openid profile email",
-  },
-  async beforeSessionSaved(session) {
-    // Validate email domain during session creation
-    const email: string | undefined = session.user?.email;
-    const domain = email?.split("@")[1];
+export interface AppUser {
+  name: string;
+  email: string;
+  picture?: string;
+}
 
-    if (!email || domain !== ALLOWED_EMAIL_DOMAIN) {
-      throw new Error(
-        `Access denied. Only @${ALLOWED_EMAIL_DOMAIN} emails are allowed.`
-      );
-    }
+export type AppAuthResult =
+  | { status: "authenticated"; user: AppUser }
+  | { status: "unauthenticated" }
+  | { status: "forbidden"; email?: string };
 
-    return session;
-  },
-});
+export function isAllowedEmail(email: string): boolean {
+  const domain = email.toLowerCase().split("@").at(-1);
+  return domain === ALLOWED_EMAIL_DOMAIN.toLowerCase();
+}
+
+export async function getCurrentAppAuth(): Promise<AppAuthResult> {
+  const user = await currentUser();
+
+  if (!user) {
+    return { status: "unauthenticated" };
+  }
+
+  const email = user.primaryEmailAddress?.emailAddress;
+
+  if (!email || !isAllowedEmail(email)) {
+    return { status: "forbidden", email };
+  }
+
+  const name =
+    user.fullName ||
+    [user.firstName, user.lastName].filter(Boolean).join(" ") ||
+    email;
+
+  return {
+    status: "authenticated",
+    user: {
+      name,
+      email,
+      picture: user.imageUrl || undefined,
+    },
+  };
+}
+
+export async function getCurrentAppUser(): Promise<AppUser | null> {
+  const appAuth = await getCurrentAppAuth();
+  return appAuth.status === "authenticated" ? appAuth.user : null;
+}
