@@ -10,14 +10,14 @@ interface SearchBarProps {
 
 export function SearchBar({ value, onChange }: SearchBarProps) {
   return (
-    <div className="relative">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+    <div className="relative flex w-full sm:w-72">
+      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
       <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Search by name, title, artist..."
         aria-label="Search tracks"
-        className="pl-10 bg-white border border-border shadow-md rounded-xl font-medium w-full sm:w-72"
+        className="pl-10 bg-white border border-border shadow-md rounded-xl font-medium w-full h-full min-h-[44px]"
       />
     </div>
   );

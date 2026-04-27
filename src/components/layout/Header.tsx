@@ -16,19 +16,22 @@ export function Header({ user }: HeaderProps) {
     <motion.header
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mb-12"
+      className="mb-10 sm:mb-12"
     >
-      <div className="flex items-center justify-between mb-6">
-        <div />
-        {user && <UserMenu user={user} />}
-      </div>
-      <div className="text-center">
-        <h1 className="text-6xl sm:text-8xl mb-4 font-black tracking-tight text-primary">
-          FM Playlist
-        </h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto font-medium">
-          Share your favorite tracks, discover what&apos;s moving the FM crew
-        </p>
+      <div className="flex items-start sm:items-center justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tight text-primary">
+            FM Playlist
+          </h1>
+          <p className="mt-2 text-sm sm:text-base md:text-lg text-muted-foreground font-medium">
+            Share your favorite tracks, discover what&apos;s moving the FM crew
+          </p>
+        </div>
+        {user && (
+          <div className="shrink-0">
+            <UserMenu user={user} />
+          </div>
+        )}
       </div>
     </motion.header>
   );

@@ -121,9 +121,9 @@ export function PlaylistView({ initialSongs, user }: PlaylistViewProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-10"
+          className="flex flex-col lg:flex-row gap-4 lg:items-center lg:justify-between mb-10"
         >
-          <div className="flex flex-col sm:flex-row gap-4 items-center">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full lg:w-auto">
             <MonthYearFilter
               availableYears={availableYears}
               availableMonths={availableMonths}
@@ -135,7 +135,11 @@ export function PlaylistView({ initialSongs, user }: PlaylistViewProps) {
             <SearchBar value={searchQuery} onChange={setSearchQuery} />
           </div>
 
-          {user && <AddTrackDialog onTrackAdded={handleTrackAdded} />}
+          {user && (
+            <div className="w-full lg:w-auto">
+              <AddTrackDialog onTrackAdded={handleTrackAdded} />
+            </div>
+          )}
         </motion.div>
 
         {/* Playlist */}

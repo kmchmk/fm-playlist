@@ -14,23 +14,23 @@ interface UserMenuProps {
 
 export function UserMenu({ user }: UserMenuProps) {
   return (
-    <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-xl shadow-md border border-border">
+    <div className="flex items-center gap-2 sm:gap-3 bg-white px-2 py-1.5 sm:px-4 sm:py-2 rounded-xl shadow-md border border-border">
       {user.picture && (
         <Image
           src={user.picture}
           alt={user.name || "User"}
           width={32}
           height={32}
-          className="rounded-full"
+          className="rounded-full w-7 h-7 sm:w-8 sm:h-8"
         />
       )}
-      <span className="text-sm font-semibold text-foreground hidden sm:inline">
+      <span className="text-sm font-semibold text-foreground hidden md:inline max-w-[12rem] truncate">
         {user.name || user.email}
       </span>
       <SignOutButton>
         <button
           type="button"
-          className="text-muted-foreground hover:text-destructive transition-colors"
+          className="text-muted-foreground hover:text-destructive transition-colors p-1"
           aria-label="Sign out"
         >
           <LogOut className="w-4 h-4" strokeWidth={2.5} />

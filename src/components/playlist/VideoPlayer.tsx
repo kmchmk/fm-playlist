@@ -25,8 +25,8 @@ export function VideoPlayer({ song }: VideoPlayerProps) {
           allowFullScreen
         />
       </div>
-      <div className="p-6 space-y-3">
-        <div className="flex items-baseline gap-2">
+      <div className="p-4 sm:p-6 space-y-3">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
           <p className="font-bold text-foreground">{song.submitterName}</p>
           {song.songTitle && (
             <p className="text-sm text-muted-foreground">

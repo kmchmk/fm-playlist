@@ -6,7 +6,7 @@ export function LoginButton() {
   return (
     <>
       <Show when="signed-out">
-        <SignInButton mode="modal">
+        <SignInButton forceRedirectUrl="/" signUpForceRedirectUrl="/">
           <Button className="bg-primary hover:bg-primary/90 text-white font-bold px-6 py-5 shadow-lg shadow-primary/30">
             <LogIn className="w-4 h-4 mr-2" strokeWidth={2.5} />
             Sign in with Google

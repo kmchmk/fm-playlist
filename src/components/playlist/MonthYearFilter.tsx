@@ -28,13 +28,13 @@ export function MonthYearFilter({
   onMonthChange,
 }: MonthYearFilterProps) {
   return (
-    <div className="flex items-center gap-3 bg-white px-5 py-3 rounded-xl shadow-md border border-border">
-      <Calendar className="w-5 h-5 text-secondary" strokeWidth={2.5} />
+    <div className="flex items-center gap-2 sm:gap-3 bg-white px-3 sm:px-5 py-2 sm:py-3 rounded-xl shadow-md border border-border w-full sm:w-auto">
+      <Calendar className="w-5 h-5 text-secondary shrink-0" strokeWidth={2.5} />
       <Select
         value={selectedYear.toString()}
         onValueChange={(v) => onYearChange(parseInt(v, 10))}
       >
-        <SelectTrigger className="w-28 bg-transparent border-0 shadow-none font-semibold">
+        <SelectTrigger className="flex-1 sm:w-28 sm:flex-none bg-transparent border-0 shadow-none font-semibold">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
@@ -49,7 +49,7 @@ export function MonthYearFilter({
         value={selectedMonth.toString()}
         onValueChange={(v) => onMonthChange(parseInt(v, 10))}
       >
-        <SelectTrigger className="w-36 bg-transparent border-0 shadow-none font-semibold">
+        <SelectTrigger className="flex-1 sm:w-36 sm:flex-none bg-transparent border-0 shadow-none font-semibold">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

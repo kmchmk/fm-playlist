@@ -62,12 +62,12 @@ export function AddTrackDialog({ onTrackAdded }: AddTrackDialogProps) {
       if (!open) setError(null);
     }}>
       <DialogTrigger asChild>
-        <Button className="bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/30 px-8 py-6 font-bold">
+        <Button className="w-full lg:w-auto bg-primary hover:bg-primary/90 text-white shadow-xl shadow-primary/30 px-6 sm:px-8 py-5 sm:py-6 font-bold">
           <Plus className="w-5 h-5 mr-2" strokeWidth={3} />
           Add Track
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md bg-white border-2 border-primary/20">
+      <DialogContent className="sm:max-w-md bg-white border-2 border-primary/20 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-3xl font-black text-primary">
             Add to This Month&apos;s Playlist
