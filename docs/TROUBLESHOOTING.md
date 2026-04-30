@@ -26,6 +26,13 @@ redirect settings.
 Check both Clerk dashboard restrictions and `ALLOWED_EMAIL_DOMAIN`. The app's
 server-side check is the final authorization boundary for playlist access.
 
+**Clerk logs `secure-context: false`**
+
+The deployed app is being served over HTTP. Clerk cookies and OAuth flows should
+use HTTPS in production. Configure TLS for the deployment domain, update Clerk's
+allowed production domain to the HTTPS URL, and use live Clerk keys for a real
+production deployment.
+
 ## Playlist Or API Issues
 
 **Playlist fails to load**

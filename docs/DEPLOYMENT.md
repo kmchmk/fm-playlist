@@ -65,7 +65,7 @@ See [../.env.example](../.env.example) for the full list.
 ## Health Check
 
 `GET /api/health` is public and returns `{"ok": true}`. Docker Compose uses it
-as the app container health check.
+as the app container liveness check.
 
 `GET /api/songs` and `POST /api/songs` are protected and should not be used as
 orchestration health checks.
@@ -101,3 +101,5 @@ orchestration health checks.
   outages should surface as app/API errors.
 - **Build cannot find Clerk key** - set `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` at
   build time, not only runtime.
+- **Clerk logs `secure-context: false`** - the app is being served over HTTP.
+  Configure TLS and use the HTTPS URL for deployed Clerk auth flows.
