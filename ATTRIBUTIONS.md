@@ -1,3 +1,5 @@
-This Figma Make file includes components from [shadcn/ui](https://ui.shadcn.com/) used under [MIT license](https://github.com/shadcn-ui/ui/blob/main/LICENSE.md).
+This app includes locally adapted components based on
+[shadcn/ui](https://ui.shadcn.com/), used under the
+[MIT license](https://github.com/shadcn-ui/ui/blob/main/LICENSE.md).
 
-This Figma Make file includes photos from [Unsplash](https://unsplash.com) used under [license](https://unsplash.com/license).
+YouTube thumbnails are loaded from `img.youtube.com` for submitted videos.

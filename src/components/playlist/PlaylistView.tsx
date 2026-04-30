@@ -11,6 +11,7 @@ import { SearchBar } from "./SearchBar";
 import { VideoPlayer } from "./VideoPlayer";
 import { ThumbnailGrid } from "./ThumbnailGrid";
 import { AddTrackDialog } from "./AddTrackDialog";
+import { usePlaylistFiltering } from "./usePlaylistFiltering";
 
 interface PlaylistViewProps {
   initialSongs: Song[];
@@ -28,56 +29,45 @@ export function PlaylistView({ initialSongs, user }: PlaylistViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeVideo, setActiveVideo] = useState<Song | null>(null);
 
-  // Apply search filter globally first
-  const searchMatchedSongs = useMemo(() => {
-    if (!searchQuery.trim()) return songs;
-    const query = searchQuery.toLowerCase();
-    return songs.filter(
-      (s) =>
-        s.submitterName.toLowerCase().includes(query) ||
-        (s.songTitle && s.songTitle.toLowerCase().includes(query)) ||
-        (s.artistName && s.artistName.toLowerCase().includes(query)) ||
-        (s.description && s.description.toLowerCase().includes(query))
-    );
-  }, [songs, searchQuery]);
+  const {
+    availableYears,
+    availableMonths,
+    filteredSongs,
+    getAvailableMonthsForYear,
+  } = usePlaylistFiltering({
+    songs,
+    searchQuery,
+    selectedYear,
+    selectedMonth,
+  });
 
-  // Derive available years and months from search-matched data
-  const availableYears = useMemo(() => {
-    const years = new Set(searchMatchedSongs.map((s) => s.year));
-    if (!searchQuery.trim()) years.add(getCurrentYear());
-    return Array.from(years).sort((a, b) => b - a);
-  }, [searchMatchedSongs, searchQuery]);
-
-  const availableMonths = useMemo(() => {
-    const months = new Set(
-      searchMatchedSongs.filter((s) => s.year === selectedYear).map((s) => s.month)
-    );
-    // Always include current month if viewing current year and not searching
-    if (!searchQuery.trim() && selectedYear === getCurrentYear()) {
-      months.add(getCurrentMonth());
-    }
-    return Array.from(months).sort((a, b) => a - b);
-  }, [searchMatchedSongs, selectedYear, searchQuery]);
-
-  // Filter by selected year/month within search results
-  const filteredSongs = useMemo(() => {
-    return searchMatchedSongs.filter(
-      (s) => s.year === selectedYear && s.month === selectedMonth
-    );
-  }, [searchMatchedSongs, selectedYear, selectedMonth]);
-
-  // Auto-adjust selected year/month when search narrows the available options
+  // Keep year and month selection valid as the search result set changes.
   useEffect(() => {
-    if (!availableYears.includes(selectedYear) && availableYears.length > 0) {
-      setSelectedYear(availableYears[0]);
-    }
-  }, [availableYears, selectedYear]);
+    if (availableYears.length === 0) return;
 
-  useEffect(() => {
-    if (!availableMonths.includes(selectedMonth) && availableMonths.length > 0) {
-      setSelectedMonth(availableMonths[availableMonths.length - 1]);
+    const nextYear = availableYears.includes(selectedYear)
+      ? selectedYear
+      : availableYears[0];
+    const monthsForYear = getAvailableMonthsForYear(nextYear);
+    if (monthsForYear.length === 0) return;
+
+    const nextMonth = monthsForYear.includes(selectedMonth)
+      ? selectedMonth
+      : monthsForYear[monthsForYear.length - 1];
+
+    if (nextYear !== selectedYear) {
+      setSelectedYear(nextYear);
     }
-  }, [availableMonths, selectedMonth]);
+
+    if (nextMonth !== selectedMonth) {
+      setSelectedMonth(nextMonth);
+    }
+  }, [
+    availableYears,
+    getAvailableMonthsForYear,
+    selectedMonth,
+    selectedYear,
+  ]);
 
   // Auto-select first video when filter changes
   const currentActive = useMemo(() => {
@@ -90,18 +80,13 @@ export function PlaylistView({ initialSongs, user }: PlaylistViewProps) {
   const handleYearChange = useCallback(
     (year: number) => {
       setSelectedYear(year);
-      // Reset to first available month for that year
-      const monthsInYear = searchMatchedSongs
-        .filter((s) => s.year === year)
-        .map((s) => s.month);
-      if (!searchQuery.trim() && year === getCurrentYear()) {
-        setSelectedMonth(getCurrentMonth());
-      } else if (monthsInYear.length > 0) {
-        setSelectedMonth(Math.max(...monthsInYear));
+      const monthsForYear = getAvailableMonthsForYear(year);
+      if (monthsForYear.length > 0) {
+        setSelectedMonth(monthsForYear[monthsForYear.length - 1]);
       }
       setActiveVideo(null);
     },
-    [searchMatchedSongs, searchQuery]
+    [getAvailableMonthsForYear]
   );
 
   const handleTrackAdded = useCallback((song: Song) => {

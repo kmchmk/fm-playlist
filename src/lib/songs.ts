@@ -8,41 +8,48 @@ import {
   bulkCreateSongRows,
   type SongInsert,
 } from "./songs-db";
+import { compareDateOnlyDesc, getDateParts, toDateOnlyString } from "./dates";
 import { extractYouTubeId } from "./youtube";
 
 /** Normalize a composite key for dedup comparison. Trims whitespace,
  *  lowercases, and strips any time component from dates. */
 function songKey(name: string, date: string, url: string): string {
-  const normDate = String(date).split("T")[0];
+  const normDate = toDateOnlyString(date);
   return `${String(name).trim().toLowerCase()}|${normDate}|${String(url).trim().toLowerCase()}`;
 }
 
 export async function getAllSongs(): Promise<Song[]> {
-  // 1. Fetch both sources in parallel
-  const [airtableSongs, dbSongs] = await Promise.all([
+  const airtableSongsPromise =
     fetchAllAirtableRecords().catch((err) => {
       console.error("Airtable fetch failed:", err);
       return [] as Song[];
-    }),
-    fetchAllSongs().catch((err) => {
-      console.error("DB fetch failed:", err);
-      return [] as Song[];
-    }),
+    });
+
+  // Postgres is the source of truth. If it fails, surface the failure instead
+  // of showing an empty playlist that looks valid.
+  const [airtableSongs, dbSongs] = await Promise.all([
+    airtableSongsPromise,
+    fetchAllSongs(),
   ]);
 
   // 2. Build a set of composite keys from the DB rows we already fetched
   const existingKeys = new Set<string>();
+  const existingAirtableIds = new Set<string>();
   for (const s of dbSongs) {
     existingKeys.add(songKey(s.submitterName, s.submittedDate, s.youtubeUrl));
+    if (s.airtableRecordId) {
+      existingAirtableIds.add(s.airtableRecordId);
+    }
   }
 
   console.log(
-    `[SYNC] Airtable: ${airtableSongs.length} rows, DB: ${dbSongs.length} rows, DB keys: ${existingKeys.size}`
+    `[SYNC] Airtable: ${airtableSongs.length} rows, DB: ${dbSongs.length} rows, DB keys: ${existingKeys.size}, Airtable IDs: ${existingAirtableIds.size}`
   );
 
   // 3. Find Airtable records that don't exist in the DB
   const newAirtableSongs = airtableSongs.filter(
     (song) =>
+      !existingAirtableIds.has(song.airtableRecordId ?? "") &&
       !existingKeys.has(
         songKey(song.submitterName, song.submittedDate, song.youtubeUrl)
       )
@@ -65,7 +72,10 @@ export async function getAllSongs(): Promise<Song[]> {
         month: song.month,
         year: song.year,
       }));
-      await bulkCreateSongRows(rows);
+      const insertedCount = await bulkCreateSongRows(rows);
+      console.log(
+        `[SYNC] Inserted ${insertedCount}/${newAirtableSongs.length} new Airtable rows into Postgres`
+      );
     } catch (err) {
       console.error("Airtable→DB sync failed:", err);
     }
@@ -75,9 +85,7 @@ export async function getAllSongs(): Promise<Song[]> {
   const merged: Song[] = [...dbSongs, ...newAirtableSongs];
 
   merged.sort((a, b) => {
-    const dateA = new Date(a.submittedDate).getTime();
-    const dateB = new Date(b.submittedDate).getTime();
-    return dateB - dateA;
+    return compareDateOnlyDesc(a.submittedDate, b.submittedDate);
   });
 
   return merged;
@@ -87,13 +95,16 @@ export async function createSong(
   input: CreateSongInput,
   user: { name: string; email: string }
 ): Promise<Song> {
-  const videoId = extractYouTubeId(input.youtubeUrl);
+  const youtubeUrl = input.youtubeUrl.trim();
+  const description = input.description?.trim();
+  const videoId = extractYouTubeId(youtubeUrl);
   if (!videoId) {
     throw new Error("Invalid YouTube URL");
   }
 
   const now = new Date();
-  const submittedDate = now.toISOString().split("T")[0];
+  const submittedDate = toDateOnlyString(now);
+  const { month, year } = getDateParts(submittedDate);
 
   return createSongRow({
     source: "app",
@@ -102,11 +113,11 @@ export async function createSong(
     submitter_email: user.email,
     artist_name: null,
     song_title: null,
-    description: input.description || null,
-    youtube_url: input.youtubeUrl,
+    description: description || null,
+    youtube_url: youtubeUrl,
     youtube_video_id: videoId,
     submitted_date: submittedDate,
-    month: now.getMonth() + 1,
-    year: now.getFullYear(),
+    month,
+    year,
   });
 }

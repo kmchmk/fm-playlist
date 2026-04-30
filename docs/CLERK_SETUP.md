@@ -1,5 +1,9 @@
 # Clerk Setup Guide
 
+The app uses `@clerk/nextjs` with the App Router, `ClerkProvider`,
+`clerkMiddleware`, `currentUser`, `SignInButton`, `SignOutButton`, `Show`, and
+`useAuth`.
+
 ## 1. Create Clerk Application
 
 1. Go to [Clerk Dashboard](https://dashboard.clerk.com/).
@@ -12,7 +16,7 @@
 
 1. Open **Configure > Authentication**.
 2. Enable **Google** as a social connection.
-3. Disable any providers you do not want the team to use.
+3. Disable providers the team should not use.
 4. For production, configure Google OAuth credentials in Clerk if prompted.
 
 ## 3. Restrict Access To Favorite Medium
@@ -20,8 +24,9 @@
 Configure Clerk's sign-up or sign-in restrictions so only
 `@favoritemedium.com` accounts can create or use accounts for this app.
 
-The app also checks `ALLOWED_EMAIL_DOMAIN` on the server as a fallback. Keep the
-Clerk dashboard restriction and the environment variable aligned.
+The app also checks `ALLOWED_EMAIL_DOMAIN` on the server for both page access
+and `/api/songs`. Keep the Clerk dashboard restriction and the environment
+variable aligned.
 
 ## 4. Get API Keys
 
@@ -53,7 +58,21 @@ set the production Clerk keys in the host environment.
 The app uses Clerk's hosted sign-in modal through `SignInButton`, so there are
 no `/auth/login`, `/auth/logout`, or `/auth/callback` routes to register.
 
-## 7. Migration Notes
+After a successful client-side sign-in, `RefreshOnSignIn` calls
+`router.refresh()` so the server-rendered homepage refetches the authenticated
+state immediately.
+
+## 7. Code Map
+
+- `src/app/layout.tsx` wraps the app with `ClerkProvider`.
+- `src/middleware.ts` installs `clerkMiddleware()` and keeps `/api/health`
+  public.
+- `src/lib/auth.ts` maps Clerk users to the app user shape and enforces the
+  allowed email domain.
+- `src/app/page.tsx` shows sign-in, forbidden-account, or playlist states.
+- `src/app/api/songs/route.ts` explicitly protects both reads and writes.
+
+## 8. Migration Notes
 
 - Existing song records do not need a database migration. Submitter name and
   email are stored as plain text.

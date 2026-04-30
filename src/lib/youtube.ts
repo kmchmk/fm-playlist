@@ -1,14 +1,54 @@
-const YOUTUBE_PATTERNS = [
-  /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([A-Za-z0-9_-]{11})/,
-  /youtube\.com\/shorts\/([A-Za-z0-9_-]{11})/,
-];
+const YOUTUBE_VIDEO_ID_PATTERN = /^[A-Za-z0-9_-]{11}$/;
+const YOUTUBE_HOSTS = new Set([
+  "youtube.com",
+  "www.youtube.com",
+  "m.youtube.com",
+  "music.youtube.com",
+]);
+const SHORT_HOSTS = new Set(["youtu.be", "www.youtu.be"]);
+
+function toUrl(value: string): URL | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  try {
+    return new URL(trimmed);
+  } catch {
+    try {
+      return new URL(`https://${trimmed}`);
+    } catch {
+      return null;
+    }
+  }
+}
+
+export function isYouTubeVideoId(value: string): boolean {
+  return YOUTUBE_VIDEO_ID_PATTERN.test(value);
+}
 
 export function extractYouTubeId(url: string): string | null {
-  for (const pattern of YOUTUBE_PATTERNS) {
-    const match = url.match(pattern);
-    if (match) return match[1];
+  const parsed = toUrl(url);
+  if (!parsed || !["http:", "https:"].includes(parsed.protocol)) {
+    return null;
   }
-  return null;
+
+  const hostname = parsed.hostname.toLowerCase();
+  let videoId: string | null = null;
+
+  if (SHORT_HOSTS.has(hostname)) {
+    videoId = parsed.pathname.split("/").filter(Boolean)[0] ?? null;
+  } else if (YOUTUBE_HOSTS.has(hostname)) {
+    if (parsed.pathname === "/watch") {
+      videoId = parsed.searchParams.get("v");
+    } else if (
+      parsed.pathname.startsWith("/embed/") ||
+      parsed.pathname.startsWith("/shorts/")
+    ) {
+      videoId = parsed.pathname.split("/").filter(Boolean)[1] ?? null;
+    }
+  }
+
+  return videoId && isYouTubeVideoId(videoId) ? videoId : null;
 }
 
 export function isValidYouTubeUrl(url: string): boolean {

@@ -1,0 +1,2 @@
+export const YOUTUBE_URL_MAX_LENGTH = 2048;
+export const SONG_DESCRIPTION_MAX_LENGTH = 500;

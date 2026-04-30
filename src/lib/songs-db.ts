@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { Song } from "@/types/song";
+import { toDateOnlyString } from "./dates";
 import { ensureSchema, getPool } from "./db";
 
 export interface SongRow {
@@ -21,18 +22,18 @@ export interface SongRow {
 
 export type SongInsert = Omit<SongRow, "id">;
 
-function toDateString(d: string | Date): string {
-  if (typeof d === "string") return d.split("T")[0];
-  const yyyy = d.getUTCFullYear();
-  const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
-  const dd = String(d.getUTCDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+function toSongSource(source: string): Song["source"] {
+  if (source === "airtable" || source === "app") {
+    return source;
+  }
+
+  throw new Error(`Invalid song source in database: ${source}`);
 }
 
 function rowToSong(row: SongRow): Song {
   return {
     id: `db_${row.id}`,
-    source: row.source as "airtable" | "app",
+    source: toSongSource(row.source),
     airtableRecordId: row.airtable_record_id,
     submitterName: row.submitter_name,
     submitterEmail: row.submitter_email,
@@ -41,7 +42,7 @@ function rowToSong(row: SongRow): Song {
     description: row.description,
     youtubeUrl: row.youtube_url,
     youtubeVideoId: row.youtube_video_id,
-    submittedDate: toDateString(row.submitted_date),
+    submittedDate: toDateOnlyString(row.submitted_date),
     month: Number(row.month),
     year: Number(row.year),
   };
@@ -92,12 +93,14 @@ export async function createSongRow(row: SongInsert): Promise<Song> {
  * Bulk insert. Uses ON CONFLICT (airtable_record_id) DO NOTHING so Airtable
  * sync is idempotent even if the in-memory dedup misses a row.
  */
-export async function bulkCreateSongRows(rows: SongInsert[]): Promise<void> {
-  if (rows.length === 0) return;
+export async function bulkCreateSongRows(rows: SongInsert[]): Promise<number> {
+  if (rows.length === 0) return 0;
   await ensureSchema();
 
   const BATCH_SIZE = 500;
   const pool = getPool();
+
+  let insertedCount = 0;
 
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
     const batch = rows.slice(i, i + BATCH_SIZE);
@@ -129,7 +132,7 @@ export async function bulkCreateSongRows(rows: SongInsert[]): Promise<void> {
       );
     });
 
-    await pool.query(
+    const result = await pool.query(
       `INSERT INTO songs (
          source, airtable_record_id, submitter_name, submitter_email,
          artist_name, song_title, description, youtube_url, youtube_video_id,
@@ -138,5 +141,8 @@ export async function bulkCreateSongRows(rows: SongInsert[]): Promise<void> {
        ON CONFLICT (airtable_record_id) DO NOTHING`,
       values
     );
+    insertedCount += result.rowCount ?? 0;
   }
+
+  return insertedCount;
 }

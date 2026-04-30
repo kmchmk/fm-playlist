@@ -6,6 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  SONG_DESCRIPTION_MAX_LENGTH,
+  YOUTUBE_URL_MAX_LENGTH,
+} from "@/lib/song-limits";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -28,6 +32,14 @@ export function AddTrackDialog({ onTrackAdded }: AddTrackDialogProps) {
     description: "",
   });
 
+  const errorId = "add-track-error";
+
+  async function readJson(response: Response): Promise<unknown> {
+    const contentType = response.headers.get("content-type");
+    if (!contentType?.includes("application/json")) return null;
+    return response.json();
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -40,12 +52,24 @@ export function AddTrackDialog({ onTrackAdded }: AddTrackDialogProps) {
         body: JSON.stringify(formData),
       });
 
+      const data = await readJson(response);
+
       if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to add track");
+        const message =
+          data &&
+          typeof data === "object" &&
+          "error" in data &&
+          typeof data.error === "string"
+            ? data.error
+            : "Failed to add track";
+        throw new Error(message);
       }
 
-      const song: Song = await response.json();
+      if (!data || typeof data !== "object") {
+        throw new Error("Failed to read added track");
+      }
+
+      const song = data as Song;
       onTrackAdded(song);
       setFormData({ youtubeUrl: "", description: "" });
       setIsOpen(false);
@@ -83,12 +107,18 @@ export function AddTrackDialog({ onTrackAdded }: AddTrackDialogProps) {
             </label>
             <Input
               id="youtube-url"
+              type="url"
+              inputMode="url"
+              autoComplete="off"
               value={formData.youtubeUrl}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, youtubeUrl: e.target.value }))
               }
               placeholder="https://youtube.com/watch?v=..."
               required
+              maxLength={YOUTUBE_URL_MAX_LENGTH}
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? errorId : undefined}
               className="bg-input-background border-2 border-border focus:border-primary"
             />
           </div>
@@ -107,15 +137,22 @@ export function AddTrackDialog({ onTrackAdded }: AddTrackDialogProps) {
               }
               placeholder="Why this track?"
               rows={3}
+              maxLength={SONG_DESCRIPTION_MAX_LENGTH}
               className="bg-input-background resize-none border-2 border-border focus:border-primary"
             />
+            <p className="mt-1 text-xs text-muted-foreground text-right">
+              {formData.description.length}/{SONG_DESCRIPTION_MAX_LENGTH}
+            </p>
           </div>
           {error && (
-            <p className="text-sm text-destructive font-medium">{error}</p>
+            <p id={errorId} role="alert" className="text-sm text-destructive font-medium">
+              {error}
+            </p>
           )}
           <Button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !formData.youtubeUrl.trim()}
+            aria-busy={isSubmitting}
             className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-6 shadow-lg shadow-primary/30"
           >
             {isSubmitting ? "Adding..." : "Add to Playlist"}

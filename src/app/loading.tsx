@@ -5,7 +5,9 @@ export default function Loading() {
         <h1 className="text-4xl font-black tracking-tight text-primary animate-pulse">
           FM Playlist
         </h1>
-        <p className="text-muted-foreground font-medium">Loading...</p>
+        <p className="text-muted-foreground font-medium">
+          Loading the latest playlist...
+        </p>
       </div>
     </div>
   );

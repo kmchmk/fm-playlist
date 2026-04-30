@@ -23,12 +23,12 @@ export interface AirtableRecord {
   id: string;
   createdTime: string;
   fields: {
-    submitterName: string;
+    submitterName?: string;
     artistName?: string;
     songTitle?: string;
     songDescription?: string;
-    youtubeLink: string;
-    submittedDate: string;
+    youtubeLink?: string;
+    submittedDate?: string;
   };
 }
 

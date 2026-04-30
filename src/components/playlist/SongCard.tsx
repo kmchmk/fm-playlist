@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 import { Play } from "lucide-react";
+import Image from "next/image";
 import type { Song } from "@/types/song";
 import { getYouTubeThumbnailUrl } from "@/lib/youtube";
 
@@ -27,10 +28,12 @@ export function SongCard({ song, isActive, index, onClick }: SongCardProps) {
           : "ring-2 ring-border hover:ring-primary/50 shadow-md"
       }`}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <Image
         src={getYouTubeThumbnailUrl(song.youtubeVideoId)}
         alt={`${song.submitterName}'s track`}
+        fill
+        sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 20vw"
+        loading={index === 0 ? "eager" : "lazy"}
         referrerPolicy="no-referrer"
         className="w-full h-full object-cover"
       />

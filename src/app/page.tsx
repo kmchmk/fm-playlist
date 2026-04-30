@@ -3,6 +3,7 @@ import { ALLOWED_EMAIL_DOMAIN } from "@/lib/constants";
 import { getAllSongs } from "@/lib/songs";
 import { PlaylistView } from "@/components/playlist/PlaylistView";
 import { LoginButton } from "@/components/auth/LoginButton";
+import { RefreshOnSignIn } from "@/components/auth/RefreshOnSignIn";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 
@@ -14,6 +15,7 @@ export default async function HomePage() {
 
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        {!isForbidden && <RefreshOnSignIn />}
         <div className="text-center space-y-6 sm:space-y-8 max-w-lg w-full">
           <h1 className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tight text-primary">
             FM Playlist

@@ -1,0 +1,56 @@
+# Testing
+
+## Commands
+
+```bash
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+```
+
+`npm run test:watch` starts Vitest in watch mode for local development.
+
+## Current Test Coverage
+
+Unit tests cover:
+
+- YouTube URL parsing and rejection of lookalike hosts
+- Date-only normalization and display formatting
+- Song submission validation
+- API auth/error helper behavior
+
+Test files live beside the code they cover as `*.test.ts` files.
+
+## Manual Smoke Tests
+
+After larger changes, verify these flows in a browser:
+
+1. Signed-out homepage shows the Clerk sign-in button.
+2. Allowed-domain user can view the playlist.
+3. Forbidden-domain user sees the account restriction message and can switch
+   accounts.
+4. Search filters submitter, title, artist, and description.
+5. Month/year filters stay valid when search changes result sets.
+6. Add Track accepts valid YouTube URLs and updates the playlist immediately.
+7. Add Track rejects invalid URLs and overlong descriptions visibly.
+8. Mobile, tablet, and desktop layouts do not overlap.
+
+## API Checks
+
+With a running app, verify:
+
+- `GET /api/health` returns 200 without authentication.
+- `GET /api/songs` rejects unauthenticated users.
+- `POST /api/songs` rejects malformed JSON, invalid YouTube URLs, and
+  forbidden-domain users.
+- Allowed users can submit a valid YouTube URL.
+
+## CI
+
+`.github/workflows/ci.yml` runs install, lint, typecheck, tests, and build on
+pushes to `main` and pull requests.
+
+The build step requires GitHub Actions secrets named
+`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY`. Use CI-safe Clerk
+credentials and keep literal key values out of the workflow file.

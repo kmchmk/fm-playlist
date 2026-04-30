@@ -1,10 +1,10 @@
 # Deployment Guide
 
-The app ships as a two-service Docker Compose stack: **`app`** (Next.js) and
-**`db`** (Postgres 16). The schema is auto-provisioned on first startup —
-there is no manual table creation, API token setup, or data modeling step.
+The app can run as a two-service Docker Compose stack or as an app container
+connected to managed Postgres. The app image uses Node 22 on Alpine and Next.js
+standalone output.
 
-## Local / Self-hosted (one-shot)
+## Local Or Self-Hosted Compose
 
 ```bash
 cp .env.example .env
@@ -12,81 +12,92 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-The app is served at http://localhost:3000. Postgres is reachable inside
-the compose network at `db:5432` (not published to the host by default).
+The app is served at http://localhost:3000. Postgres is reachable inside the
+compose network at `db:5432` and is not published to the host by default.
 
-To reset state (wipe the DB volume):
+To reset local state and wipe the DB volume:
 
 ```bash
 docker compose down -v
 ```
 
-## Required environment variables
+## Required Environment Variables
 
-See [.env.example](../.env.example) for the full list.
+See [../.env.example](../.env.example) for the full list.
 
-- **Clerk (required):** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`,
-  `CLERK_SECRET_KEY`. See [CLERK_SETUP.md](CLERK_SETUP.md).
-  Note: `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is inlined into the client bundle
-  at **build time** and must be passed as a Docker build arg (already wired
-  in `docker-compose.yml`; for Coolify or other managed builds, set it as a
-  build-time variable in addition to a runtime variable).
-- **Postgres (required):** `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`
-  — these are consumed by both services; `DATABASE_URL` is derived from them
-  in `docker-compose.yml`.
-- **Airtable (optional):** `AIRTABLE_API_TOKEN`, `AIRTABLE_BASE_ID`. Omit to
-  disable the Airtable → Postgres sync; the app still runs.
-- **Auth domain allowlist (optional):** `ALLOWED_EMAIL_DOMAIN`, defaults to
-  `favoritemedium.com`. Configure the same restriction in Clerk as the primary
-  access control.
+- **Clerk:** `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`.
+  `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is inlined into the client bundle at
+  build time, so set it as both a build-time and runtime variable.
+- **Postgres:** compose uses `POSTGRES_DB`, `POSTGRES_USER`, and
+  `POSTGRES_PASSWORD` to build `DATABASE_URL`. Managed deployments can set
+  `DATABASE_URL` directly.
+- **Airtable:** `AIRTABLE_API_TOKEN` and `AIRTABLE_BASE_ID` are optional. Omit
+  them to run from Postgres only.
+- **Domain allowlist:** `ALLOWED_EMAIL_DOMAIN` defaults to `favoritemedium.com`.
+  Keep it aligned with Clerk's own sign-in restrictions.
 
-## Coolify / managed hosts
+## Coolify Or Managed Hosts
 
-You have two reasonable options:
+### Option A: Docker Compose
 
-### A. Deploy the compose file as-is
+1. Create a Docker Compose resource pointed at this repo.
+2. Set variables from `.env.example` in the host UI.
+3. Assign a domain to the `app` service and enable TLS.
 
-1. Create a new **Docker Compose** resource in Coolify pointing at this repo
-   (build context `.`).
-2. Set environment variables via Coolify's UI (same names as `.env.example`).
-3. Assign a domain to the `app` service and enable SSL.
+### Option B: App Container Plus Managed Postgres
 
-### B. App container + managed Postgres
+1. Create a managed Postgres resource and copy its connection string.
+2. Create a Docker build resource using the root `Dockerfile`.
+3. Set `DATABASE_URL`, Clerk keys, and optional Airtable values.
+4. Set `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` as a build variable too.
+5. Assign a domain and deploy.
 
-1. Create a Postgres resource in Coolify. Copy the connection string.
-2. Create a Docker Build resource using the repo's root `Dockerfile` (build
-   context `.`). Set `DATABASE_URL` to the managed Postgres connection
-   string. The app runs `ensureSchema()` on first request, which creates
-   the `songs` table and indexes automatically.
-3. Assign a domain, enable SSL, deploy.
+`ensureSchema()` creates or updates the `songs` table on first access.
 
-## Clerk production setup
-
-After deploying, update your Clerk application:
+## Clerk Production Setup
 
 - Add `https://<your-domain>` as an allowed production domain.
 - Enable Google sign-in for the production instance.
-- Restrict sign-ups/sign-ins to `@favoritemedium.com` in Clerk's restrictions
-  or allowlist settings.
-- Set production values for `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` and
-  `CLERK_SECRET_KEY` in your host.
-- Existing Auth0 sessions do not migrate; users will sign in again with Clerk.
+- Restrict sign-ups/sign-ins to the allowed email domain in Clerk.
+- Use production Clerk keys only in production.
+- Existing Auth0 sessions do not migrate; users sign in again with Clerk.
 
-## Health check
+## Health Check
 
-The `app` service exposes an unauthenticated `GET /api/health` endpoint that
-returns `{"ok": true}`. Compose uses it as the container health check.
+`GET /api/health` is public and returns `{"ok": true}`. Docker Compose uses it
+as the app container health check.
+
+`GET /api/songs` and `POST /api/songs` are protected and should not be used as
+orchestration health checks.
+
+## Operations
+
+- Keep `.env` and `.env.local` out of Git. They are ignored by Git and Docker
+  build context rules.
+- Rotate Clerk or Airtable credentials if they are copied into a shared place,
+  committed by accident, or exposed by build artifacts.
+- Back up Postgres before destructive maintenance. For compose deployments,
+  data lives in the `postgres_data` volume.
+- Watch logs for `[SYNC]` messages. They include Airtable row counts, skipped
+  row counts, and inserted row counts.
+- Run `npm audit --audit-level=high` and your container scanner before
+  releases.
 
 ## Troubleshooting
 
-- **`DATABASE_URL is not set`** — the `app` service requires Postgres. In
-  compose this is wired automatically; on managed hosts make sure you set it.
-- **App starts before DB is ready** — compose uses `depends_on: service_healthy`,
-  but if you're running the app outside compose, retry logic is in the pg pool
-  itself; first requests may fail until Postgres accepts connections.
-- **Clerk keys missing or mixed** — use matching publishable and secret keys
-  from the same Clerk development or production instance.
-- **Unexpected account can sign in** — check Clerk's sign-up restrictions and
-  confirm `ALLOWED_EMAIL_DOMAIN` matches the intended domain.
-- **Airtable 401/403** — token expired or scoped incorrectly. Either fix the
-  token or unset `AIRTABLE_API_TOKEN` to skip sync entirely.
+- **`DATABASE_URL is not set`** - the app requires Postgres. Compose wires it
+  automatically; managed hosts must set it explicitly.
+- **App starts before DB is ready** - compose waits for Postgres health, but
+  outside compose the first request can fail until Postgres accepts connections.
+- **Clerk keys missing or mixed** - use publishable and secret keys from the
+  same Clerk instance.
+- **Unexpected account can sign in** - check Clerk restrictions and confirm
+  `ALLOWED_EMAIL_DOMAIN` matches the intended domain.
+- **Airtable 401/403** - token expired or scoped incorrectly. Fix the token or
+  unset Airtable variables to skip sync.
+- **Airtable 429** - the app retries with exponential backoff. If it still
+  fails, Postgres data is served and the issue is logged.
+- **Empty playlist after DB failure** - this should no longer happen. DB
+  outages should surface as app/API errors.
+- **Build cannot find Clerk key** - set `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` at
+  build time, not only runtime.

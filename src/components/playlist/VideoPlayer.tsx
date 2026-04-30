@@ -2,6 +2,7 @@
 
 import { motion } from "motion/react";
 import type { Song } from "@/types/song";
+import { formatDateOnlyForDisplay } from "@/lib/dates";
 import { getYouTubeEmbedUrl } from "@/lib/youtube";
 
 interface VideoPlayerProps {
@@ -41,12 +42,7 @@ export function VideoPlayer({ song }: VideoPlayerProps) {
           </p>
         )}
         <div className="text-sm text-muted-foreground font-semibold">
-          Added{" "}
-          {new Date(song.submittedDate).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          })}
+          Added {formatDateOnlyForDisplay(song.submittedDate)}
         </div>
       </div>
     </motion.div>

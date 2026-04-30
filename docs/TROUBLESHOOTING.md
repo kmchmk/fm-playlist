@@ -1,0 +1,80 @@
+# Troubleshooting
+
+## App Will Not Start
+
+**`DATABASE_URL is not set`**
+
+The app requires Postgres. Compose derives `DATABASE_URL` automatically from
+`POSTGRES_*` values. Local Node and managed deployments must set it explicitly.
+
+**Clerk publishable key error**
+
+`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is required at build time and runtime.
+Docker Compose passes it as a build arg; managed hosts need the same setting in
+their build-variable UI.
+
+## Authentication Issues
+
+**Allowed user sees the sign-in page after OAuth**
+
+The `RefreshOnSignIn` component should refresh the server-rendered homepage
+after Clerk reports a signed-in session. Check browser console errors and Clerk
+redirect settings.
+
+**Unexpected user can sign in**
+
+Check both Clerk dashboard restrictions and `ALLOWED_EMAIL_DOMAIN`. The app's
+server-side check is the final authorization boundary for playlist access.
+
+## Playlist Or API Issues
+
+**Playlist fails to load**
+
+Check Postgres connectivity first. Postgres failures now surface as app/API
+errors because Postgres is required.
+
+**Airtable rows are missing**
+
+Check logs for `[SYNC]` messages. Rows are skipped if they lack a YouTube URL,
+have an unsupported URL, or have an invalid date. Airtable failures do not stop
+Postgres data from loading.
+
+**Invalid YouTube URL rejected**
+
+Accepted formats are:
+
+- `https://youtube.com/watch?v=<videoId>`
+- `https://www.youtube.com/watch?v=<videoId>`
+- `https://youtu.be/<videoId>`
+- `https://www.youtube.com/embed/<videoId>`
+- `https://www.youtube.com/shorts/<videoId>`
+
+The video ID must be exactly 11 characters.
+
+## Docker And Database
+
+**Reset local database**
+
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+
+**Inspect rows by source**
+
+```bash
+docker compose exec db psql -U fmplaylist -d fm_playlist -c "SELECT source, COUNT(*) FROM songs GROUP BY source;"
+```
+
+**Inspect app logs**
+
+```bash
+docker compose logs -f app
+```
+
+## Quality Gate Failures
+
+- `npm run lint`: check framework, accessibility, and unused-code issues.
+- `npm run typecheck`: check TypeScript errors, especially route/helper types.
+- `npm run test`: check focused unit tests for parsing, validation, and dates.
+- `npm run build`: check runtime configuration required by Next.js and Clerk.

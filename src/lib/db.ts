@@ -32,7 +32,7 @@ export function getPool(): Pool {
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS songs (
   id                   SERIAL PRIMARY KEY,
-  source               TEXT        NOT NULL,
+  source               TEXT        NOT NULL CONSTRAINT songs_source_check CHECK (source IN ('airtable', 'app')),
   airtable_record_id   TEXT        UNIQUE,
   submitter_name       TEXT        NOT NULL,
   submitter_email      TEXT,
@@ -40,13 +40,32 @@ CREATE TABLE IF NOT EXISTS songs (
   song_title           TEXT,
   description          TEXT,
   youtube_url          TEXT        NOT NULL,
-  youtube_video_id     TEXT        NOT NULL,
+  youtube_video_id     TEXT        NOT NULL CONSTRAINT songs_youtube_video_id_check CHECK (youtube_video_id ~ '^[A-Za-z0-9_-]{11}$'),
   submitted_date       DATE        NOT NULL,
-  month                SMALLINT    NOT NULL,
-  year                 INTEGER     NOT NULL,
+  month                SMALLINT    NOT NULL CONSTRAINT songs_month_check CHECK (month BETWEEN 1 AND 12),
+  year                 INTEGER     NOT NULL CONSTRAINT songs_year_check CHECK (year BETWEEN 2000 AND 2100),
   created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'songs_source_check') THEN
+    ALTER TABLE songs ADD CONSTRAINT songs_source_check CHECK (source IN ('airtable', 'app')) NOT VALID;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'songs_youtube_video_id_check') THEN
+    ALTER TABLE songs ADD CONSTRAINT songs_youtube_video_id_check CHECK (youtube_video_id ~ '^[A-Za-z0-9_-]{11}$') NOT VALID;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'songs_month_check') THEN
+    ALTER TABLE songs ADD CONSTRAINT songs_month_check CHECK (month BETWEEN 1 AND 12) NOT VALID;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'songs_year_check') THEN
+    ALTER TABLE songs ADD CONSTRAINT songs_year_check CHECK (year BETWEEN 2000 AND 2100) NOT VALID;
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS songs_submitted_date_idx
   ON songs (submitted_date DESC);

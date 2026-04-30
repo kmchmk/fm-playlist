@@ -21,7 +21,7 @@ export function UserMenu({ user }: UserMenuProps) {
           alt={user.name || "User"}
           width={32}
           height={32}
-          className="rounded-full w-7 h-7 sm:w-8 sm:h-8"
+          className="size-8 rounded-full"
         />
       )}
       <span className="text-sm font-semibold text-foreground hidden md:inline max-w-[12rem] truncate">

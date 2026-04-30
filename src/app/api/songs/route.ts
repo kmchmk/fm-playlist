@@ -1,19 +1,52 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getCurrentAppAuth } from "@/lib/auth";
-import { ALLOWED_EMAIL_DOMAIN } from "@/lib/constants";
+import type { AppAuthResult } from "@/lib/auth";
 import { getAllSongs, createSong } from "@/lib/songs";
-import type { CreateSongInput } from "@/types/song";
-import { isValidYouTubeUrl } from "@/lib/youtube";
+import { getAuthError, makeApiError } from "@/lib/api";
+import {
+  createSongInputSchema,
+  validationMessages,
+} from "@/lib/validation";
+
+type AuthenticatedAppAuth = Extract<
+  AppAuthResult,
+  { status: "authenticated" }
+>;
+
+type AuthorizedSongsRequest =
+  | { appAuth: AuthenticatedAppAuth; response: null }
+  | { appAuth: null; response: NextResponse };
+
+async function authorizeSongsRequest(): Promise<AuthorizedSongsRequest> {
+  const appAuth = await getCurrentAppAuth();
+  const authError = getAuthError(appAuth);
+
+  if (authError) {
+    return {
+      appAuth: null,
+      response: NextResponse.json(authError.body, { status: authError.status }),
+    };
+  }
+
+  if (appAuth.status !== "authenticated") {
+    throw new Error("Unexpected auth state");
+  }
+
+  return { appAuth, response: null };
+}
 
 export async function GET() {
   try {
+    const { response } = await authorizeSongsRequest();
+    if (response) return response;
+
     const songs = await getAllSongs();
     return NextResponse.json(songs);
   } catch (error) {
     console.error("Failed to fetch songs:", error);
     return NextResponse.json(
-      { error: "Failed to fetch songs" },
+      makeApiError("Failed to fetch songs", "FETCH_SONGS_FAILED"),
       { status: 500 }
     );
   }
@@ -21,56 +54,43 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const appAuth = await getCurrentAppAuth();
-    if (appAuth.status === "unauthenticated") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    if (appAuth.status === "forbidden") {
-      return NextResponse.json(
-        { error: `Access restricted to @${ALLOWED_EMAIL_DOMAIN} email addresses` },
-        { status: 403 }
-      );
-    }
+    const { appAuth, response } = await authorizeSongsRequest();
+    if (response) return response;
 
     let body: unknown;
     try {
       body = await request.json();
     } catch {
       return NextResponse.json(
-        { error: "Invalid JSON body" },
+        makeApiError("Invalid JSON body", "INVALID_JSON"),
         { status: 400 }
       );
     }
 
-    const { youtubeUrl, description } = body as Record<string, unknown>;
+    const parsed = createSongInputSchema.safeParse(body);
 
-    if (
-      typeof youtubeUrl !== "string" ||
-      !isValidYouTubeUrl(youtubeUrl)
-    ) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "A valid YouTube URL is required" },
+        makeApiError(
+          "Invalid song submission",
+          "INVALID_SONG_INPUT",
+          validationMessages(parsed.error)
+        ),
         { status: 400 }
       );
     }
-
-    const input: CreateSongInput = {
-      youtubeUrl,
-      description: typeof description === "string" ? description : undefined,
-    };
 
     const user = {
       name: appAuth.user.name,
       email: appAuth.user.email,
     };
 
-    const song = await createSong(input, user);
+    const song = await createSong(parsed.data, user);
     return NextResponse.json(song, { status: 201 });
   } catch (error) {
     console.error("Failed to create song:", error);
     return NextResponse.json(
-      { error: "Failed to create song" },
+      makeApiError("Failed to create song", "CREATE_SONG_FAILED"),
       { status: 500 }
     );
   }
