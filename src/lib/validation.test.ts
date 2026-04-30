@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SONG_DESCRIPTION_MAX_LENGTH } from "./song-limits";
-import { createSongInputSchema, validationMessages } from "./validation";
+import { createSongInputSchema } from "./validation";
 
 describe("createSongInputSchema", () => {
   it("accepts and trims valid song submissions", () => {
@@ -38,7 +38,7 @@ describe("createSongInputSchema", () => {
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(validationMessages(result.error)).toEqual(
+      expect(result.error.issues.map((issue) => issue.message)).toEqual(
         expect.arrayContaining([
           "A valid YouTube URL is required",
           `Description must be ${SONG_DESCRIPTION_MAX_LENGTH} characters or fewer`,

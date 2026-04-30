@@ -29,7 +29,3 @@ export const createSongInputSchema = z
   .strict();
 
 export type ValidatedCreateSongInput = z.infer<typeof createSongInputSchema>;
-
-export function validationMessages(error: z.ZodError): string[] {
-  return error.issues.map((issue) => issue.message);
-}

@@ -12,7 +12,7 @@ export type AppAuthResult =
   | { status: "unauthenticated" }
   | { status: "forbidden"; email?: string };
 
-export function isAllowedEmail(email: string): boolean {
+function isAllowedEmail(email: string): boolean {
   const domain = email.toLowerCase().split("@").at(-1);
   return domain === ALLOWED_EMAIL_DOMAIN.toLowerCase();
 }
@@ -43,9 +43,4 @@ export async function getCurrentAppAuth(): Promise<AppAuthResult> {
       picture: user.imageUrl || undefined,
     },
   };
-}
-
-export async function getCurrentAppUser(): Promise<AppUser | null> {
-  const appAuth = await getCurrentAppAuth();
-  return appAuth.status === "authenticated" ? appAuth.user : null;
 }

@@ -14,8 +14,7 @@ import { extractYouTubeId } from "./youtube";
 /** Normalize a composite key for dedup comparison. Trims whitespace,
  *  lowercases, and strips any time component from dates. */
 function songKey(name: string, date: string, url: string): string {
-  const normDate = toDateOnlyString(date);
-  return `${String(name).trim().toLowerCase()}|${normDate}|${String(url).trim().toLowerCase()}`;
+  return `${name.trim().toLowerCase()}|${toDateOnlyString(date)}|${url.trim().toLowerCase()}`;
 }
 
 export async function getAllSongs(): Promise<Song[]> {

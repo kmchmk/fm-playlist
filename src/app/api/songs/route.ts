@@ -4,10 +4,7 @@ import { getCurrentAppAuth } from "@/lib/auth";
 import type { AppAuthResult } from "@/lib/auth";
 import { getAllSongs, createSong } from "@/lib/songs";
 import { getAuthError, makeApiError } from "@/lib/api";
-import {
-  createSongInputSchema,
-  validationMessages,
-} from "@/lib/validation";
+import { createSongInputSchema } from "@/lib/validation";
 
 type AuthenticatedAppAuth = Extract<
   AppAuthResult,
@@ -74,7 +71,7 @@ export async function POST(request: NextRequest) {
         makeApiError(
           "Invalid song submission",
           "INVALID_SONG_INPUT",
-          validationMessages(parsed.error)
+          parsed.error.issues.map((issue) => issue.message)
         ),
         { status: 400 }
       );

@@ -34,12 +34,6 @@ export function AddTrackDialog({ onTrackAdded }: AddTrackDialogProps) {
 
   const errorId = "add-track-error";
 
-  async function readJson(response: Response): Promise<unknown> {
-    const contentType = response.headers.get("content-type");
-    if (!contentType?.includes("application/json")) return null;
-    return response.json();
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -52,7 +46,7 @@ export function AddTrackDialog({ onTrackAdded }: AddTrackDialogProps) {
         body: JSON.stringify(formData),
       });
 
-      const data = await readJson(response);
+      const data = (await response.json()) as unknown;
 
       if (!response.ok) {
         const message =

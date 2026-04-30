@@ -68,7 +68,6 @@ export function usePlaylistFiltering({
   );
 
   return {
-    searchMatchedSongs,
     availableYears,
     availableMonths,
     filteredSongs,
